@@ -1087,18 +1087,35 @@ function ft(s) {
 
 function normalizeMusic(raw) {
   if (!raw) return null;
+  const audioUrl = raw.audioUrl || raw.audio_url || raw.mp3Url || raw.mp3_url || raw.streamUrl || raw.stream_url || raw.downloadUrl || raw.download_url || raw.musicUrl || raw.music_url || '';
+  const videoUrl = raw.videoUrl || raw.video_url || raw.mp4Url || raw.mp4_url || '';
   return {
     ...raw,
     musicId: raw.musicId || raw.music_id || raw.id || '',
     title: raw.title || raw.name || 'Untitled',
     imageUrl: raw.imageUrl || raw.image_url || raw.imageLargeUrl || raw.image_large_url || '',
     imageLargeUrl: raw.imageLargeUrl || raw.image_large_url || raw.imageUrl || raw.image_url || '',
-    audioUrl: raw.audioUrl || raw.audio_url || raw.mp3Url || raw.mp3_url || '',
-    mp3Url: raw.mp3Url || raw.mp3_url || raw.audioUrl || raw.audio_url || '',
-    videoUrl: raw.videoUrl || raw.video_url || '',
+    audioUrl,
+    mp3Url: raw.mp3Url || raw.mp3_url || audioUrl,
+    videoUrl,
     duration: raw.duration || raw.audioDuration || raw.audio_duration || 0,
     tags: raw.tags || raw.tag || ''
   };
+}
+
+function triggerDownload(url, filename) {
+  if (!url) {
+    showErr('This generated song does not include a downloadable audio URL yet.');
+    return;
+  }
+  const a = document.createElement('a');
+  a.href = url;
+  if (filename) a.download = filename;
+  a.target = '_blank';
+  a.rel = 'noopener';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
 }
 
 function addCard(m, tags, type) {
@@ -1138,12 +1155,12 @@ function addCard(m, tags, type) {
     <div class="wv" id="wv_${m.musicId}">${wvBars()}</div>
     <span class="sdur">${dur}</span>
     <div class="sacts">
-      <button class="sa"
-        onclick="event.stopPropagation();window.open('${audUrl}','_blank')">↓ MP3</button>
+      <button class="sa" ${audUrl ? '' : 'disabled'}
+        onclick="event.stopPropagation();triggerDownload('${audUrl}','${stit}.mp3')">↓ MP3</button>
       <button class="sa wav" id="wav_${m.musicId}"
         onclick="event.stopPropagation();downloadWav('${sid}',this,'${stit}')">⬇ WAV</button>
       ${m.videoUrl
-        ? `<button class="sa" onclick="event.stopPropagation();window.open('${m.videoUrl}','_blank')">▶ MP4</button>`
+        ? `<button class="sa" onclick="event.stopPropagation();triggerDownload('${m.videoUrl}','${stit}.mp4')">▶ MP4</button>`
         : ''}
     </div>
     <button class="pb2"
