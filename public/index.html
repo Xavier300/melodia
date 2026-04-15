@@ -1,0 +1,1182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Melodia — AI Music Studio</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0b0b0f;--bg2:#13131a;--bg3:#1a1a24;--bg4:#22222f;
+  --border:#252535;--border2:#353550;
+  --text:#eeeef8;--muted:#6e6e90;--faint:#2e2e45;
+  --pu:#8b7ff5;--pu2:#b3a8ff;
+  --gr:#3ecf72;--pk:#f06ba0;--am:#f5a623;
+  --rd:#e85d5d;
+  --r:10px;--r2:14px;
+}
+html,body{height:100%;overflow:hidden;}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);}
+
+/* ── NAV ── */
+.nav{display:flex;align-items:center;justify-content:space-between;padding:11px 22px;background:var(--bg2);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:50;}
+.logo{display:flex;align-items:center;gap:9px;font-size:17px;font-weight:700;letter-spacing:-.4px;text-decoration:none;color:var(--text);}
+.logo-mark{width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,#8b7ff5,#f06ba0);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;}
+.nav-r{display:flex;align-items:center;gap:8px;}
+
+/* Server status badge */
+.srv-badge{display:flex;align-items:center;gap:5px;padding:4px 11px;border-radius:20px;font-size:10px;font-weight:600;border:1px solid;cursor:default;}
+.srv-badge.ok {background:rgba(62,207,114,.08);border-color:rgba(62,207,114,.3);color:var(--gr);}
+.srv-badge.err{background:rgba(232,93,93,.08); border-color:rgba(232,93,93,.3); color:var(--rd);}
+.srv-badge.chk{background:rgba(139,127,245,.08);border-color:rgba(139,127,245,.3);color:var(--pu2);}
+.srv-dot{width:6px;height:6px;border-radius:50%;background:currentColor;flex-shrink:0;}
+.srv-dot.pulse{animation:bl .9s ease infinite;}
+
+.nbtn{padding:6px 14px;border-radius:var(--r);font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--text);transition:all .15s;white-space:nowrap;}
+.nbtn:hover{background:var(--bg3);}
+.nbtn.pri{background:var(--pu);border-color:var(--pu);color:#fff;}
+.nbtn.pri:hover{background:#7a6ee0;}
+
+/* ── TABS ── */
+.tabs{display:flex;background:var(--bg2);border-bottom:1px solid var(--border);padding:0 22px;}
+.tab{padding:10px 15px;font-size:12px;font-weight:500;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;background:none;border-top:none;border-left:none;border-right:none;transition:all .15s;}
+.tab:hover{color:var(--text);}
+.tab.on{color:var(--pu2);border-bottom-color:var(--pu);font-weight:600;}
+
+/* ── LAYOUT ── */
+.shell{display:flex;height:calc(100vh - 88px);} /* nav+tabs height */
+.sb{width:246px;flex-shrink:0;background:var(--bg2);border-right:1px solid var(--border);overflow-y:auto;padding:16px 13px;display:flex;flex-direction:column;gap:18px;}
+.ctr{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+
+/* ── SIDEBAR ── */
+.sl{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:7px;}
+.msw{display:flex;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;}
+.mb{flex:1;padding:7px 5px;font-size:11px;font-weight:600;cursor:pointer;background:transparent;border:none;color:var(--muted);transition:all .15s;text-align:center;line-height:1.3;}
+.mb.on{background:var(--pu);color:#fff;}
+.mlist{display:flex;flex-direction:column;gap:4px;}
+.mc{padding:8px 10px;border-radius:var(--r);border:1px solid var(--border);cursor:pointer;transition:all .15s;background:transparent;text-align:left;width:100%;}
+.mc:hover{background:var(--bg3);border-color:var(--border2);}
+.mc.on{border-color:var(--pu);background:rgba(139,127,245,.1);}
+.mn{font-size:12px;font-weight:700;color:var(--text);}
+.mbadge{font-size:9px;padding:2px 5px;border-radius:4px;font-weight:700;margin-left:5px;}
+.b-hot{background:rgba(240,107,160,.18);color:var(--pk);}
+.b-new{background:rgba(62,207,114,.15);color:var(--gr);}
+.b-fast{background:rgba(245,166,35,.15);color:var(--am);}
+.msub{font-size:10px;color:var(--muted);margin-top:2px;}
+
+.trow{display:flex;align-items:center;justify-content:space-between;}
+.tl{font-size:12px;color:var(--text);}
+.tg{position:relative;width:34px;height:18px;cursor:pointer;display:inline-block;}
+.tg input{opacity:0;width:0;height:0;}
+.tt{position:absolute;inset:0;background:var(--bg4);border-radius:9px;border:1px solid var(--border);transition:background .2s;}
+.tg input:checked~.tt{background:var(--pu);}
+.tk{position:absolute;top:2px;left:2px;width:12px;height:12px;background:#fff;border-radius:50%;transition:transform .2s;}
+.tg input:checked~.tt .tk{transform:translateX(16px);}
+
+.vg-wrap{display:flex;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;}
+.vg-btn{flex:1;padding:7px 5px;font-size:11px;font-weight:600;cursor:pointer;background:transparent;border:none;color:var(--muted);transition:all .15s;text-align:center;}
+.vg-btn:hover{color:var(--text);}
+.vg-btn.on{background:var(--pu);color:#fff;}
+.vg-hint{font-size:10px;color:var(--muted);margin-top:4px;text-align:center;}
+.vg-hint em{color:var(--pu2);font-style:normal;font-weight:600;}
+
+/* Cover sliders — only visible in cover mode */
+.cover-sb{display:none;}
+.cover-sb.vis{display:block;}
+.slrow{display:flex;flex-direction:column;gap:4px;margin-bottom:10px;}
+.sltop{display:flex;justify-content:space-between;}
+.sltop span:first-child{font-size:11px;color:var(--text);}
+.sltop span:last-child{font-size:11px;font-weight:700;color:var(--pu2);}
+.sldesc{font-size:10px;color:var(--muted);line-height:1.4;margin-top:1px;}
+input[type=range]{width:100%;accent-color:var(--pu);cursor:pointer;}
+
+/* ── PANEL (create area) ── */
+.panel{padding:16px 20px;background:var(--bg2);border-bottom:1px solid var(--border);flex-shrink:0;}
+.phead{font-size:11px;color:var(--muted);margin-bottom:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.phead em{color:var(--pu2);font-style:normal;font-weight:600;}
+.mbadge2{padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;background:rgba(139,127,245,.18);color:var(--pu2);border:1px solid var(--pu);}
+
+.iblock{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);padding:11px 13px;margin-bottom:8px;transition:border-color .15s;}
+.iblock:focus-within{border-color:var(--pu);}
+.il{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:4px;}
+.ip{width:100%;background:transparent;border:none;outline:none;color:var(--text);font-size:13px;font-family:inherit;resize:none;line-height:1.55;}
+.ip::placeholder{color:var(--faint);}
+.ip.mono{font-family:'Courier New',monospace;font-size:12px;line-height:1.7;}
+
+/* Cover hint banner */
+.cover-hint{display:none;background:rgba(240,107,160,.07);border:1px solid rgba(240,107,160,.22);border-radius:var(--r);padding:7px 12px;font-size:11px;color:var(--pk);margin-bottom:8px;line-height:1.5;}
+.cover-hint.vis{display:block;}
+
+/* Source tabs */
+.src-tabs{display:flex;background:var(--bg4);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:9px;}
+.src-tab{flex:1;padding:7px 8px;font-size:11px;font-weight:600;cursor:pointer;background:transparent;border:none;color:var(--muted);transition:all .15s;text-align:center;}
+.src-tab.on{background:var(--pu);color:#fff;}
+
+/* URL input */
+.url-wrap{display:none;}
+.url-wrap.vis{display:block;}
+.url-input{width:100%;background:var(--bg4);border:1px solid var(--border);border-radius:var(--r);padding:9px 12px;font-size:12px;font-family:inherit;color:var(--text);outline:none;transition:border-color .15s;}
+.url-input:focus{border-color:var(--pu);}
+.url-input::placeholder{color:var(--muted);}
+
+/* File upload */
+.file-wrap{display:none;}
+.file-wrap.vis{display:block;}
+.dropzone{border:1.5px dashed var(--border2);border-radius:var(--r2);padding:20px 14px;text-align:center;cursor:pointer;transition:all .2s;background:var(--bg3);user-select:none;}
+.dropzone:hover,.dropzone.drag{border-color:var(--pu);background:rgba(139,127,245,.07);}
+.dropzone.ready{border-color:var(--pu);border-style:solid;}
+.dz-ico{font-size:24px;opacity:.45;margin-bottom:6px;}
+.dz-lbl{font-size:12px;color:var(--muted);line-height:1.55;}
+.dz-lbl strong{color:var(--pu2);}
+.dz-sub{font-size:10px;color:var(--faint);margin-top:3px;}
+
+.finfo{display:none;align-items:center;gap:9px;background:rgba(139,127,245,.07);border:1px solid rgba(139,127,245,.22);border-radius:var(--r);padding:8px 11px;margin-top:7px;}
+.finfo.vis{display:flex;}
+.finfo-ico{font-size:16px;flex-shrink:0;}
+.finfo-name{font-size:12px;font-weight:600;color:var(--text);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.finfo-size{font-size:10px;color:var(--muted);white-space:nowrap;flex-shrink:0;}
+.finfo-clear{width:20px;height:20px;border-radius:4px;border:none;background:transparent;color:var(--muted);cursor:pointer;font-size:13px;line-height:1;flex-shrink:0;display:flex;align-items:center;justify-content:center;}
+.finfo-clear:hover{color:var(--pk);}
+
+/* Upload progress */
+.uprog{display:none;margin-top:7px;}
+.uprog.vis{display:block;}
+.uprog-bar-wrap{height:4px;background:var(--bg4);border-radius:2px;overflow:hidden;margin-bottom:4px;}
+.uprog-bar{height:100%;background:linear-gradient(90deg,#8b7ff5,#b3a8ff);border-radius:2px;transition:width .25s;}
+.uprog-lbl{font-size:10px;color:var(--muted);}
+
+.trow2{display:flex;gap:6px;margin-bottom:7px;}
+.tinput{flex:1;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:8px 11px;font-size:12px;color:var(--text);outline:none;font-family:inherit;transition:border-color .15s;}
+.tinput:focus{border-color:var(--pu);}
+.tinput::placeholder{color:var(--faint);}
+.lbtn{padding:8px 11px;border-radius:var(--r);border:1px solid var(--border);background:transparent;color:var(--muted);font-size:11px;font-weight:600;cursor:pointer;transition:all .15s;white-space:nowrap;}
+.lbtn:hover{color:var(--text);border-color:var(--border2);}
+
+.arow{display:flex;gap:7px;align-items:center;flex-wrap:wrap;}
+.gbtn{display:flex;align-items:center;gap:7px;padding:9px 18px;border-radius:var(--r);background:linear-gradient(135deg,#8b7ff5,#b3a8ff);border:none;color:#fff;font-size:13px;font-weight:700;cursor:pointer;transition:opacity .15s;white-space:nowrap;}
+.gbtn:hover{opacity:.88;}
+.gbtn:disabled{opacity:.35;cursor:not-allowed;}
+.spin{width:13px;height:13px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:sp .7s linear infinite;display:none;}
+@keyframes sp{to{transform:rotate(360deg)}}
+
+.qs{display:flex;gap:4px;flex-wrap:wrap;margin-top:7px;}
+.qsb{padding:3px 8px;border-radius:20px;border:1px solid var(--border);background:transparent;color:var(--muted);font-size:11px;cursor:pointer;transition:all .15s;}
+.qsb:hover{color:var(--text);border-color:var(--border2);}
+
+.errmsg{font-size:12px;color:#f87171;background:rgba(248,113,113,.07);padding:7px 11px;border-radius:var(--r);margin-top:7px;border:1px solid rgba(248,113,113,.18);display:none;line-height:1.5;}
+
+/* ── FEED ── */
+.feed{flex:1;overflow-y:auto;padding:16px 20px;}
+.fh{display:flex;align-items:center;justify-content:space-between;margin-bottom:13px;}
+.fh-title{font-size:14px;font-weight:700;}
+.fh-count{font-size:11px;color:var(--muted);}
+.slist{display:flex;flex-direction:column;gap:7px;}
+.sc{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r2);padding:11px 13px;display:flex;align-items:center;gap:11px;transition:all .15s;}
+.sc:hover{background:var(--bg3);border-color:var(--border2);}
+.sc.playing{border-color:var(--pu);background:rgba(139,127,245,.06);}
+.scov{width:44px;height:44px;border-radius:8px;object-fit:cover;flex-shrink:0;background:var(--bg4);}
+.scov-ph{width:44px;height:44px;border-radius:8px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:17px;background:linear-gradient(135deg,var(--bg4),var(--bg3));border:1px solid var(--border);}
+.sinfo{flex:1;min-width:0;}
+.stit{font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:3px;}
+.smeta{display:flex;align-items:center;gap:5px;flex-wrap:wrap;}
+.stags{font-size:10px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px;}
+.smod{font-size:9px;padding:2px 6px;border-radius:4px;font-weight:700;background:rgba(139,127,245,.14);color:var(--pu2);}
+.stype{font-size:9px;padding:2px 6px;border-radius:4px;font-weight:700;}
+.stype.cover{background:rgba(240,107,160,.14);color:var(--pk);}
+.stype.orig{background:rgba(62,207,114,.1);color:var(--gr);}
+.sdur{font-size:10px;color:var(--muted);white-space:nowrap;flex-shrink:0;}
+.sacts{display:flex;gap:4px;align-items:center;flex-shrink:0;}
+.sa{height:25px;border-radius:6px;border:1px solid var(--border);background:transparent;cursor:pointer;font-size:10px;font-weight:600;display:flex;align-items:center;justify-content:center;color:var(--muted);transition:all .15s;padding:0 7px;white-space:nowrap;}
+.sa:hover{background:var(--bg4);color:var(--text);}
+.sa.wav{border-color:rgba(139,127,245,.35);color:var(--pu2);}
+.sa.wav:hover{background:rgba(139,127,245,.1);}
+.sa:disabled{opacity:.35;cursor:not-allowed;}
+.pb2{width:32px;height:32px;border-radius:50%;border:none;background:linear-gradient(135deg,#8b7ff5,#b3a8ff);cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center;color:#fff;transition:all .15s;flex-shrink:0;}
+.pb2:hover{transform:scale(1.07);}
+.wv{display:flex;align-items:center;gap:2px;height:24px;width:60px;flex-shrink:0;}
+.wb{width:3px;border-radius:2px;background:var(--faint);transition:height .2s;}
+.wv.on .wb{background:var(--pu2);}
+.ldc{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r2);padding:13px 14px;display:flex;align-items:center;gap:11px;}
+.ldcov{width:44px;height:44px;border-radius:8px;background:var(--bg3);flex-shrink:0;overflow:hidden;position:relative;}
+.ldcov::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(139,127,245,.14),transparent);animation:sh 1.3s infinite;}
+@keyframes sh{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}
+.ldln{flex:1;display:flex;flex-direction:column;gap:7px;}
+.ldl{height:9px;border-radius:5px;background:var(--bg3);overflow:hidden;position:relative;}
+.ldl::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(139,127,245,.1),transparent);animation:sh 1.3s infinite;}
+.emp{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:48px 20px;text-align:center;gap:9px;}
+.emp-ico{font-size:34px;opacity:.22;}
+.emp-h{font-size:15px;font-weight:700;}
+.emp-s{font-size:12px;color:var(--muted);max-width:310px;line-height:1.7;}
+
+/* ── PLAYER ── */
+.player{background:var(--bg2);border-top:1px solid var(--border);padding:10px 20px;display:flex;align-items:center;gap:13px;flex-shrink:0;}
+.pcov{width:38px;height:38px;border-radius:7px;object-fit:cover;background:var(--bg4);flex-shrink:0;}
+.pinfo{min-width:0;width:145px;flex-shrink:0;}
+.ptit{font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ptag{font-size:10px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.pctrl{display:flex;align-items:center;gap:7px;flex:1;justify-content:center;}
+.pc{width:26px;height:26px;border-radius:50%;border:none;background:transparent;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center;color:var(--muted);transition:all .15s;}
+.pc:hover{color:var(--text);}
+.pp{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,#8b7ff5,#b3a8ff);border:none;cursor:pointer;font-size:13px;color:#fff;display:flex;align-items:center;justify-content:center;transition:all .15s;}
+.pp:hover{transform:scale(1.05);}
+.prw{flex:1;display:flex;align-items:center;gap:6px;}
+.prb{flex:1;height:3px;background:var(--bg4);border-radius:2px;cursor:pointer;position:relative;}
+.prf{height:100%;background:linear-gradient(90deg,#8b7ff5,#b3a8ff);border-radius:2px;transition:width .5s linear;pointer-events:none;}
+.pt{font-size:9px;color:var(--muted);min-width:26px;text-align:center;}
+.pvw{display:flex;align-items:center;gap:5px;width:85px;flex-shrink:0;}
+.pvw input{flex:1;accent-color:var(--pu);}
+
+/* ── MODAL ── */
+.mo{position:fixed;inset:0;background:rgba(0,0,0,.72);display:flex;align-items:center;justify-content:center;z-index:200;}
+.md{background:var(--bg2);border:1px solid var(--border2);border-radius:var(--r2);padding:24px;width:min(440px,92vw);}
+.mdt{font-size:15px;font-weight:700;margin-bottom:5px;}
+.mds{font-size:12px;color:var(--muted);margin-bottom:16px;line-height:1.7;}
+.mdi{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:10px 13px;font-size:13px;font-family:inherit;color:var(--text);outline:none;margin-bottom:11px;transition:border-color .15s;}
+.mdi:focus{border-color:var(--pu);}
+.mda{display:flex;gap:7px;justify-content:flex-end;}
+.mdl{font-size:11px;color:var(--muted);text-align:center;margin-top:10px;}
+.mdl a{color:var(--pu2);text-decoration:none;}
+
+/* ── STATUS BAR ── */
+.sbar{padding:4px 20px;background:var(--bg);border-top:1px solid var(--border);display:flex;justify-content:space-between;font-size:10px;color:var(--muted);flex-shrink:0;}
+.sd{width:6px;height:6px;border-radius:50%;background:var(--gr);display:inline-block;margin-right:4px;}
+.sd.on{background:var(--pu);animation:bl .9s ease infinite;}
+@keyframes bl{0%,100%{opacity:1}50%{opacity:.28}}
+</style>
+</head>
+<body>
+
+<!-- ── NAV ────────────────────────────────────────────────────── -->
+<div class="nav">
+  <a class="logo" href="#">
+    <div class="logo-mark">♪</div>
+    melodia
+  </a>
+  <div class="nav-r">
+    <div class="srv-badge chk" id="srv-badge">
+      <span class="srv-dot pulse"></span>
+      <span id="srv-txt">Checking server…</span>
+    </div>
+    <button class="nbtn" id="api-btn">API key</button>
+    <button class="nbtn pri">Upgrade</button>
+  </div>
+</div>
+
+<!-- ── TABS ── -->
+<div class="tabs">
+  <button class="tab on">Create</button>
+  <button class="tab">Library</button>
+  <button class="tab">Explore</button>
+  <button class="tab">Extend</button>
+</div>
+
+<!-- ── SHELL ── -->
+<div class="shell">
+
+  <!-- SIDEBAR -->
+  <div class="sb">
+
+    <div>
+      <div class="sl">Mode</div>
+      <div class="msw">
+        <button class="mb on" id="m-insp"  onclick="setMode('inspiration')">Inspiration</button>
+        <button class="mb"    id="m-cust"  onclick="setMode('custom')">Custom</button>
+        <button class="mb"    id="m-cover" onclick="setMode('cover')">Cover ✦</button>
+      </div>
+    </div>
+
+    <div>
+      <div class="sl">Model</div>
+      <div class="mlist">
+        <button class="mc on" onclick="selModel(this,'chirp-v5','Suno v5.5')">
+          <div><span class="mn">Suno v5.5</span><span class="mbadge b-hot">latest</span></div>
+          <div class="msub">Best quality · most expressive</div>
+        </button>
+        <button class="mc" onclick="selModel(this,'chirp-v5','Suno v5')">
+          <div><span class="mn">Suno v5</span><span class="mbadge b-new">v5</span></div>
+          <div class="msub">Studio-grade · natural vocals</div>
+        </button>
+        <button class="mc" onclick="selModel(this,'chirp-v4-5+','Suno v4.5+')">
+          <div><span class="mn">Suno v4.5+</span><span class="mbadge b-fast">popular</span></div>
+          <div class="msub">Richer sound · up to 8 min</div>
+        </button>
+        <button class="mc" onclick="selModel(this,'chirp-v4','Suno v4')">
+          <div><span class="mn">Suno v4</span></div>
+          <div class="msub">Balanced quality & speed</div>
+        </button>
+        <button class="mc" onclick="selModel(this,'chirp-v3-5','Suno v3.5')">
+          <div><span class="mn">Suno v3.5</span></div>
+          <div class="msub">Fast generation</div>
+        </button>
+      </div>
+    </div>
+
+    <div>
+      <div class="sl">Options</div>
+      <div style="display:flex;flex-direction:column;gap:9px;">
+        <div class="trow">
+          <span class="tl">Instrumental only</span>
+          <label class="tg"><input type="checkbox" id="tg-inst" onchange="S.instrumental=this.checked"><div class="tt"><div class="tk"></div></div></label>
+        </div>
+        <div class="trow">
+          <span class="tl">Generate video</span>
+          <label class="tg"><input type="checkbox" id="tg-vid" onchange="S.genVideo=this.checked"><div class="tt"><div class="tk"></div></div></label>
+        </div>
+      </div>
+    </div>
+
+    <!-- Cover controls — shown only in cover mode -->
+    <div class="cover-sb" id="cover-sb">
+      <div class="sl">Cover controls</div>
+      <div class="slrow">
+        <div class="sltop">
+          <span>Original audio weight</span>
+          <span id="aw-val">0.50</span>
+        </div>
+        <input type="range" min="0" max="1" step="0.05" value="0.5" id="aw-slider"
+          oninput="S.audioWeight=+this.value;document.getElementById('aw-val').textContent=(+this.value).toFixed(2)">
+        <div class="sldesc">Higher = preserves more of the original melody</div>
+      </div>
+      <div class="slrow">
+        <div class="sltop">
+          <span>Style strength</span>
+          <span id="sw-val">0.50</span>
+        </div>
+        <input type="range" min="0" max="1" step="0.05" value="0.5" id="sw-slider"
+          oninput="S.styleWeight=+this.value;document.getElementById('sw-val').textContent=(+this.value).toFixed(2)">
+        <div class="sldesc">Higher = stronger style transformation</div>
+      </div>
+    </div>
+
+    <div>
+      <div class="sl">Voice gender</div>
+      <div class="vg-wrap">
+        <button class="vg-btn on" id="vg-any" onclick="selVG('',this)">Any</button>
+        <button class="vg-btn"    id="vg-f"   onclick="selVG('Female',this)">Female</button>
+        <button class="vg-btn"    id="vg-m"   onclick="selVG('Male',this)">Male</button>
+      </div>
+      <div class="vg-hint">Sending: <em id="vg-lbl">any (not set)</em></div>
+    </div>
+
+  </div><!-- /sb -->
+
+  <!-- CENTER -->
+  <div class="ctr">
+
+    <!-- PANEL -->
+    <div class="panel">
+      <div class="phead">
+        Creating in <em id="mode-lbl">Inspiration Mode</em>
+        &nbsp;·&nbsp;
+        <span class="mbadge2" id="model-lbl">Suno v5.5</span>
+      </div>
+
+      <div class="cover-hint" id="cover-hint">
+        🎤 Cover mode — upload a local audio file or paste a public URL, then describe the new style
+      </div>
+
+      <!-- ── COVER BLOCK ── -->
+      <div id="cover-block" style="display:none;">
+
+        <!-- Source: URL vs local file -->
+        <div class="src-tabs">
+          <button class="src-tab on" id="src-url" onclick="setSrc('url')">🔗 Public URL</button>
+          <button class="src-tab"    id="src-file" onclick="setSrc('file')">📁 Local file</button>
+        </div>
+
+        <!-- URL input -->
+        <div class="url-wrap vis" id="url-wrap">
+          <input class="url-input" id="cover-url"
+            placeholder="https://example.com/song.mp3  (publicly reachable URL)">
+        </div>
+
+        <!-- Local file upload — goes to the hosted app backend -->
+        <div class="file-wrap" id="file-wrap">
+          <input type="file" id="file-input" accept="audio/*" style="display:none;"
+            onchange="onFileChosen(this)">
+          <div class="dropzone" id="dropzone"
+            onclick="document.getElementById('file-input').click()"
+            ondragover="event.preventDefault();this.classList.add('drag')"
+            ondragleave="this.classList.remove('drag')"
+            ondrop="onFileDrop(event)">
+            <div class="dz-ico">📁</div>
+            <div class="dz-lbl"><strong>Click to browse</strong> or drag & drop audio</div>
+            <div class="dz-sub">MP3 · WAV · FLAC · M4A · OGG · AAC · max 100 MB</div>
+            <div class="dz-sub" style="margin-top:4px;color:var(--pu2);">
+              Temporarily stored by the hosted app so TTAPI can fetch it
+            </div>
+          </div>
+          <div class="finfo" id="finfo">
+            <span class="finfo-ico">🎵</span>
+            <span class="finfo-name" id="finfo-name">—</span>
+            <span class="finfo-size" id="finfo-size">—</span>
+            <button class="finfo-clear" onclick="clearFile()">✕</button>
+          </div>
+          <div class="uprog" id="uprog">
+            <div class="uprog-bar-wrap"><div class="uprog-bar" id="uprog-bar" style="width:0%"></div></div>
+            <div class="uprog-lbl" id="uprog-lbl">Uploading…</div>
+          </div>
+        </div>
+
+        <!-- Style + lyrics inputs -->
+        <div class="iblock" style="margin-top:9px;">
+          <div class="il">New style description</div>
+          <textarea class="ip" id="cover-style" rows="2"
+            placeholder="e.g. smooth jazz with walking bass and brushed drums, mellow and late-night…"></textarea>
+        </div>
+        <div class="iblock">
+          <div class="il">Lyrics override (optional — leave blank to keep original)</div>
+          <textarea class="ip mono" id="cover-lyrics" rows="3"
+            placeholder="[Verse 1]&#10;Leave empty to preserve the original song's lyrics…"></textarea>
+        </div>
+
+      </div><!-- /cover-block -->
+
+      <!-- ── INSPIRATION / CUSTOM ── -->
+      <div id="style-block">
+        <div class="iblock">
+          <div class="il">Style / vibe description</div>
+          <textarea class="ip" id="style-prompt" rows="2"
+            placeholder="e.g. dreamy lo-fi hip hop with gentle piano and rain sounds, melancholic but cozy…"></textarea>
+        </div>
+      </div>
+      <div id="lyrics-block" style="display:none;">
+        <div class="iblock">
+          <div class="il">Lyrics</div>
+          <textarea class="ip mono" id="lyrics-input" rows="5"
+            placeholder="[Verse 1]&#10;Enter your lyrics here…&#10;&#10;[Chorus]&#10;Or leave blank to auto-generate"></textarea>
+        </div>
+      </div>
+
+      <div class="trow2">
+        <input type="text" class="tinput" id="title-input" placeholder="Song title (optional)">
+        <button class="lbtn" id="lbtn" style="display:none;" onclick="genLyrics()">✦ Gen lyrics</button>
+      </div>
+
+      <div class="arow">
+        <button class="gbtn" id="gbtn" onclick="generate()">
+          <div class="spin" id="gsp"></div>
+          <span id="glbl">✦ Create song</span>
+        </button>
+        <button class="lbtn" id="surprise-btn" onclick="surprise()">✦ Surprise me</button>
+      </div>
+
+      <div class="qs" id="qs-row">
+        <span style="font-size:10px;color:var(--muted);margin-right:3px;">Quick:</span>
+        <button class="qsb" onclick="setS('upbeat summer pop, catchy chorus, bright synths')">Summer pop</button>
+        <button class="qsb" onclick="setS('dark cinematic orchestral, tense strings, epic build')">Epic cinematic</button>
+        <button class="qsb" onclick="setS('laid-back acoustic folk, fingerpicking guitar')">Acoustic folk</button>
+        <button class="qsb" onclick="setS('glitchy electronic, 8-bit retro, bouncy chiptune')">Chiptune</button>
+        <button class="qsb" onclick="setS('smooth jazz cafe, walking bass, brushed drums')">Smooth jazz</button>
+      </div>
+
+      <div class="errmsg" id="errmsg"></div>
+    </div><!-- /panel -->
+
+    <!-- FEED -->
+    <div class="feed">
+      <div class="fh">
+        <span class="fh-title">Your songs</span>
+        <span class="fh-count" id="song-count">0 tracks</span>
+      </div>
+      <div class="emp" id="emp">
+        <div class="emp-ico">🎵</div>
+        <div class="emp-h">Nothing generated yet</div>
+        <div class="emp-s">
+          Describe a vibe and hit Create. In Cover mode, upload a local file
+          or paste a URL and describe the new style.
+        </div>
+      </div>
+      <div class="slist" id="slist" style="display:none;"></div>
+    </div>
+
+    <!-- STATUS BAR -->
+    <div class="sbar">
+      <div><span class="sd" id="sdot"></span><span id="stxt">Ready</span></div>
+      <div id="sbar-r">melodia · TTAPI Suno API</div>
+    </div>
+
+  </div><!-- /ctr -->
+</div><!-- /shell -->
+
+<!-- PLAYER -->
+<div class="player" id="player" style="display:none;">
+  <img class="pcov" id="pcov" src="" alt="">
+  <div class="pinfo">
+    <div class="ptit" id="ptit">—</div>
+    <div class="ptag" id="ptag">—</div>
+  </div>
+  <div class="pctrl">
+    <button class="pc">⏮</button>
+    <button class="pp" id="pp" onclick="togPlay()">▶</button>
+    <button class="pc">⏭</button>
+  </div>
+  <div class="prw">
+    <span class="pt" id="pcur">0:00</span>
+    <div class="prb" id="prb" onclick="seek(event)">
+      <div class="prf" id="prf" style="width:0%"></div>
+    </div>
+    <span class="pt" id="pdur">0:00</span>
+  </div>
+  <div class="pvw">
+    <span style="font-size:12px;color:var(--muted);">🔊</span>
+    <input type="range" min="0" max="1" step="0.05" value="0.8" oninput="setVol(this.value)">
+  </div>
+</div>
+
+<!-- API KEY MODAL -->
+<div class="mo" id="api-modal" style="display:none;">
+  <div class="md">
+    <div class="mdt">Connect your TTAPI key</div>
+    <div class="mds">
+      Your key is saved to localStorage and persists across reloads.
+      Get one at <a href="https://ttapi.io" target="_blank">ttapi.io</a>.
+    </div>
+    <input class="mdi" type="password" id="api-key-in" placeholder="Your TT-API-KEY…">
+    <div class="mda">
+      <button class="nbtn" onclick="closeModal()">Cancel</button>
+      <button class="nbtn pri" onclick="saveKey()">Save key</button>
+    </div>
+    <div class="mdl"><a href="https://ttapi.io" target="_blank">Get a key at ttapi.io →</a></div>
+  </div>
+</div>
+
+<audio id="aud"></audio>
+
+<script>
+// ────────────────────────────────────────────────────────────────
+// Config
+// ────────────────────────────────────────────────────────────────
+const TTAPI = 'https://api.ttapi.io';
+const LOCAL = '/api'; // Backend routes on the same origin
+
+const PROMPTS = [
+  'upbeat synthwave with pulsing arpeggios and nostalgic 80s vibes',
+  'melancholic bedroom pop, soft vocals, reverb guitar and lo-fi drums',
+  'aggressive trap beat, 808 bass, hi-hat rolls, dark atmosphere',
+  'peaceful meditation ambient, gentle bowls, ethereal pads, nature sounds',
+  'vintage soul ballad, warm organ, gospel choir, heartfelt storytelling',
+  'high-energy EDM drop, big bass, euphoric synths, festival anthem',
+  'rainy day bossa nova, nylon guitar, soft brushes, cozy café feel',
+  'cinematic western score, dusty guitar, dramatic strings, adventure'
+];
+
+// ────────────────────────────────────────────────────────────────
+// State
+// ────────────────────────────────────────────────────────────────
+const S = {
+  apiKey:      localStorage.getItem('ttapi_key') || '',
+  model:       'chirp-v5',
+  modelName:   'Suno v5.5',
+  mode:        'inspiration',
+  instrumental: false,
+  genVideo:    false,
+  vocalGender: '',
+  audioWeight: 0.5,
+  styleWeight: 0.5,
+  coverSrc:    'url',
+  file:        null,        // selected File object
+  uploadedUrl: null,        // public URL after local server upload
+  uploadedFn:  null,        // filename on server (for cleanup)
+  gen:         false,
+  lyricGen:    false,
+  count:       0,
+  serverOk:    false
+};
+
+// Pre-fill key input if already saved
+if (S.apiKey) document.getElementById('api-key-in').value = S.apiKey;
+
+// ────────────────────────────────────────────────────────────────
+// App health check (polls every 15 s)
+// ────────────────────────────────────────────────────────────────
+async function checkServer() {
+  try {
+    const r = await fetch(`${LOCAL}/status`, { cache: 'no-store' });
+    const d = await r.json();
+    S.serverOk = true;
+    const badge = document.getElementById('srv-badge');
+    badge.className = 'srv-badge ok';
+    document.getElementById('srv-txt').textContent = 'Server online';
+    document.querySelector('#srv-badge .srv-dot').classList.remove('pulse');
+
+    const tunnelOk = d.tunnelConfigured;
+    document.getElementById('sbar-r').textContent =
+      `melodia · ${d.publicUrl}${tunnelOk ? ' ✓ public url set' : ''} · TTAPI`;
+  } catch {
+    S.serverOk = false;
+    const badge = document.getElementById('srv-badge');
+    badge.className = 'srv-badge err';
+    document.getElementById('srv-txt').textContent = 'App offline — start or deploy the backend';
+    document.querySelector('#srv-badge .srv-dot').classList.add('pulse');
+  }
+}
+checkServer();
+setInterval(checkServer, 15000);
+
+// ────────────────────────────────────────────────────────────────
+// API key modal
+// ────────────────────────────────────────────────────────────────
+document.getElementById('api-btn').onclick = () =>
+  document.getElementById('api-modal').style.display = 'flex';
+
+function closeModal() {
+  document.getElementById('api-modal').style.display = 'none';
+}
+function saveKey() {
+  const v = document.getElementById('api-key-in').value.trim();
+  if (!v) return;
+  S.apiKey = v;
+  localStorage.setItem('ttapi_key', v);
+  closeModal();
+  setStatus('API key saved ✓', false);
+}
+
+// ────────────────────────────────────────────────────────────────
+// Mode switching
+// ────────────────────────────────────────────────────────────────
+function setMode(m) {
+  S.mode = m;
+  ['insp','cust','cover'].forEach(x => document.getElementById('m-' + x).classList.remove('on'));
+  document.getElementById('m-' + {inspiration:'insp',custom:'cust',cover:'cover'}[m]).classList.add('on');
+
+  document.getElementById('mode-lbl').textContent =
+    { inspiration: 'Inspiration Mode', custom: 'Custom Mode', cover: 'Cover Song Mode' }[m];
+
+  document.getElementById('cover-block').style.display  = m === 'cover'  ? 'block' : 'none';
+  document.getElementById('style-block').style.display  = m === 'cover'  ? 'none'  : 'block';
+  document.getElementById('lyrics-block').style.display = m === 'custom' ? 'block' : 'none';
+  document.getElementById('lbtn').style.display         = m === 'custom' ? 'block' : 'none';
+  document.getElementById('cover-hint').classList.toggle('vis', m === 'cover');
+  document.getElementById('cover-sb').classList.toggle('vis',   m === 'cover');
+  document.getElementById('qs-row').style.display        = m === 'cover'  ? 'none'  : 'flex';
+  document.getElementById('surprise-btn').style.display  = m === 'cover'  ? 'none'  : 'block';
+  document.getElementById('glbl').textContent = m === 'cover' ? '✦ Create cover' : '✦ Create song';
+}
+
+// ────────────────────────────────────────────────────────────────
+// Model / voice gender
+// ────────────────────────────────────────────────────────────────
+function selModel(el, mv, name) {
+  document.querySelectorAll('.mc').forEach(c => c.classList.remove('on'));
+  el.classList.add('on');
+  S.model = mv; S.modelName = name;
+  document.getElementById('model-lbl').textContent = name;
+}
+function selVG(v, el) {
+  S.vocalGender = v;
+  document.querySelectorAll('.vg-btn').forEach(b => b.classList.remove('on'));
+  el.classList.add('on');
+  document.getElementById('vg-lbl').textContent = v === '' ? 'any (not set)' : v;
+}
+
+// ────────────────────────────────────────────────────────────────
+// Cover source tab
+// ────────────────────────────────────────────────────────────────
+function setSrc(src) {
+  S.coverSrc = src;
+  document.getElementById('src-url').classList.toggle('on',  src === 'url');
+  document.getElementById('src-file').classList.toggle('on', src === 'file');
+  document.getElementById('url-wrap').classList.toggle('vis',  src === 'url');
+  document.getElementById('file-wrap').classList.toggle('vis', src === 'file');
+}
+
+// ────────────────────────────────────────────────────────────────
+// File selection / drag-drop
+// ────────────────────────────────────────────────────────────────
+function onFileChosen(input) {
+  if (input.files && input.files[0]) acceptFile(input.files[0]);
+}
+function onFileDrop(e) {
+  e.preventDefault();
+  document.getElementById('dropzone').classList.remove('drag');
+  const f = e.dataTransfer.files[0];
+  if (f && f.type.startsWith('audio/')) acceptFile(f);
+  else showErr('Please drop an audio file (MP3, WAV, FLAC, M4A, OGG, AAC).');
+}
+function acceptFile(f) {
+  if (f.size > 100 * 1024 * 1024) { showErr('File too large. Maximum is 100 MB.'); return; }
+  S.file = f;
+  S.uploadedUrl = null;
+  S.uploadedFn  = null;
+  document.getElementById('finfo-name').textContent = f.name;
+  document.getElementById('finfo-size').textContent = (f.size / 1024 / 1024).toFixed(1) + ' MB';
+  document.getElementById('finfo').classList.add('vis');
+  document.getElementById('dropzone').classList.add('ready');
+  document.getElementById('dropzone').querySelector('.dz-lbl').innerHTML =
+    `<strong>${f.name}</strong>`;
+}
+function clearFile() {
+  S.file = null; S.uploadedUrl = null; S.uploadedFn = null;
+  document.getElementById('file-input').value = '';
+  document.getElementById('finfo').classList.remove('vis');
+  document.getElementById('dropzone').classList.remove('ready');
+  document.getElementById('dropzone').querySelector('.dz-lbl').innerHTML =
+    '<strong>Click to browse</strong> or drag & drop audio';
+  hideUpProg();
+}
+
+// ────────────────────────────────────────────────────────────────
+// Upload progress UI
+// ────────────────────────────────────────────────────────────────
+function showUpProg(pct, lbl) {
+  document.getElementById('uprog').classList.add('vis');
+  document.getElementById('uprog-bar').style.width = Math.min(pct, 100) + '%';
+  document.getElementById('uprog-lbl').textContent = lbl;
+}
+function hideUpProg() {
+  document.getElementById('uprog').classList.remove('vis');
+  document.getElementById('uprog-bar').style.width = '0%';
+}
+
+// ────────────────────────────────────────────────────────────────
+// Upload local file → hosted backend → get public URL
+//
+// Flow:
+//  1. Browser POSTs file to POST /api/upload (multipart)
+//  2. Backend stores the file temporarily
+//  3. Backend returns a public URL for TTAPI to fetch
+//  4. That URL is given to TTAPI's /suno/v1/upload so it can fetch the audio
+// ────────────────────────────────────────────────────────────────
+async function uploadFileToServer(file) {
+  if (!S.serverOk) {
+    throw new Error('App is offline. Start the backend locally or deploy it.');
+  }
+
+  showUpProg(5, 'Uploading…');
+  const form = new FormData();
+  form.append('audio', file, file.name);
+
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', `${LOCAL}/upload`);
+
+    xhr.upload.onprogress = e => {
+      if (e.lengthComputable) {
+        const pct = Math.round((e.loaded / e.total) * 88);
+        showUpProg(pct, `Uploading… ${pct}%`);
+      }
+    };
+
+    xhr.onload = () => {
+      if (xhr.status === 200) {
+        let data;
+        try { data = JSON.parse(xhr.responseText); } catch {
+          reject(new Error('Invalid response from upload endpoint')); return;
+        }
+        showUpProg(100, `Saved: ${data.filename}`);
+        setTimeout(hideUpProg, 1200);
+        S.uploadedUrl = data.url;
+        S.uploadedFn  = data.filename;
+        resolve(data.url);
+      } else {
+        hideUpProg();
+        let msg = 'Upload failed';
+        try { msg = JSON.parse(xhr.responseText).error || msg; } catch {}
+        reject(new Error(msg));
+      }
+    };
+    xhr.onerror = () => { hideUpProg(); reject(new Error('Network error during file upload')); };
+    xhr.send(form);
+  });
+}
+
+// ────────────────────────────────────────────────────────────────
+// Register audio with TTAPI (give it the public URL to fetch from)
+// ────────────────────────────────────────────────────────────────
+async function registerWithTTAPI(publicUrl) {
+  // FIX (Issue 5): use is_async: true so large files don't time out the browser fetch.
+  // TTAPI fetches the file in the background and we poll for the music_id.
+  const r = await fetch(`${TTAPI}/suno/v1/upload`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'TT-API-KEY': S.apiKey },
+    body: JSON.stringify({ audio_url: publicUrl, is_async: true })
+  });
+  const d = await r.json();
+
+  // Async mode returns a jobId we need to poll for the music_id
+  if (d.status === 'SUCCESS' && d.data && d.data.jobId) {
+    setStatus('Waiting for TTAPI to fetch your audio…', true);
+    const music_id = await pollFetch(
+      d.data.jobId,
+      x => x && x.data && x.data.music_id ? x.data.music_id : null,
+      30, 3000
+    );
+    if (music_id) return music_id;
+    throw new Error('TTAPI timed out fetching your audio. Check that Cloudflare Tunnel is running.');
+  }
+
+  // Sync fallback: some TTAPI versions return music_id directly
+  if (d.status === 'SUCCESS' && d.data && d.data.music_id) return d.data.music_id;
+
+  throw new Error(
+    d.message ||
+    'TTAPI could not fetch your audio. Make sure Cloudflare Tunnel is running and PUBLIC_URL is set in .env'
+  );
+}
+
+// Cleanup — delete file from backend storage after TTAPI has fetched it
+function deleteFromServer(filename) {
+  if (!filename) return;
+  fetch(`${LOCAL}/upload/${encodeURIComponent(filename)}`, { method: 'DELETE' })
+    .catch(() => {/* silent — cleanup failure is not critical */});
+}
+
+// ────────────────────────────────────────────────────────────────
+// Cover song generation
+// ────────────────────────────────────────────────────────────────
+async function generateCover(musicId, styleDesc, lyricsOverride, loadId) {
+  const body = {
+    mv:           S.model,
+    music_id:     musicId,
+    prompt:       lyricsOverride || styleDesc,  // required
+    tags:         styleDesc,
+    audio_weight: String(S.audioWeight),
+    style_weight: String(S.styleWeight),
+  };
+  if (S.vocalGender) body.vocal_gender = S.vocalGender;
+
+  const r = await fetch(`${TTAPI}/suno/v1/cover`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'TT-API-KEY': S.apiKey },
+    body: JSON.stringify(body)
+  });
+  const d = await r.json();
+
+  if (d.status === 'SUCCESS' && d.data && d.data.jobId) {
+    setStatus('Reimagining cover… 30–90 s', true);
+    const musics = await pollFetch(
+      d.data.jobId,
+      x => x && x.data && x.data.musics && x.data.musics.length > 0 ? x.data.musics : null
+    );
+    removeLoading(loadId);
+    if (musics) {
+      musics.forEach(m => addCard(m, styleDesc, 'cover'));
+      deleteFromServer(S.uploadedFn);  // clean up now that TTAPI has fetched it
+      S.uploadedFn = null;
+    } else {
+      showErr('Cover generation timed out or failed. Check your API key and quota.');
+    }
+  } else {
+    removeLoading(loadId);
+    showErr(d.message || 'Cover generation failed. Check API key and quota.');
+  }
+}
+
+// ────────────────────────────────────────────────────────────────
+// Generic TTAPI job poller
+// ────────────────────────────────────────────────────────────────
+async function pollFetch(jobId, extract, maxTries = 60, interval = 4000) {
+  for (let i = 0; i < maxTries; i++) {
+    await new Promise(r => setTimeout(r, interval));
+    try {
+      const r = await fetch(`${TTAPI}/suno/v1/fetch`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'TT-API-KEY': S.apiKey },
+        body: JSON.stringify({ jobId })
+      });
+      const d = await r.json();
+      const val = extract(d);
+      if (val) return val;
+      if (d.status === 'FAILED') return null;
+    } catch { /* retry */ }
+  }
+  return null;
+}
+
+// ────────────────────────────────────────────────────────────────
+// Lyrics generation
+// ────────────────────────────────────────────────────────────────
+async function genLyrics() {
+  if (S.lyricGen) return;
+  if (!S.apiKey) { document.getElementById('api-modal').style.display = 'flex'; return; }
+  const prompt = document.getElementById('style-prompt').value.trim() || 'music';
+  const btn = document.getElementById('lbtn');
+  btn.textContent = '⏳…'; btn.disabled = true;
+  S.lyricGen = true; setStatus('Generating lyrics…', true);
+  try {
+    const r = await fetch(`${TTAPI}/suno/v1/lyrics`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'TT-API-KEY': S.apiKey },
+      body: JSON.stringify({ prompt })
+    });
+    const d = await r.json();
+    if (d.status === 'SUCCESS' && d.data && d.data.jobId) {
+      const lyr = await pollFetch(d.data.jobId, x => x && x.data && (x.data.text || x.data.lyrics));
+      if (lyr) document.getElementById('lyrics-input').value = lyr;
+      else showErr('No lyrics returned.');
+    } else showErr(d.message || 'Lyrics generation failed.');
+  } catch (e) { showErr('Network error: ' + e.message); }
+  finally {
+    btn.textContent = '✦ Gen lyrics'; btn.disabled = false;
+    S.lyricGen = false; setStatus('Ready', false);
+  }
+}
+
+// ────────────────────────────────────────────────────────────────
+// Main generate
+// ────────────────────────────────────────────────────────────────
+async function generate() {
+  if (S.gen) return;
+  if (!S.apiKey) { document.getElementById('api-modal').style.display = 'flex'; return; }
+
+  const stylePrompt  = document.getElementById('style-prompt').value.trim();
+  const coverUrl     = document.getElementById('cover-url').value.trim();
+  const coverStyle   = document.getElementById('cover-style').value.trim();
+  const coverLyrics  = document.getElementById('cover-lyrics').value.trim();
+
+  // Validate
+  if (S.mode === 'cover') {
+    if (S.coverSrc === 'url'  && !coverUrl)   { showErr('Please enter a public audio URL.'); return; }
+    if (S.coverSrc === 'file' && !S.file)     { showErr('Please select a local audio file.'); return; }
+    if (!coverStyle)                           { showErr('Please describe the new style for your cover.'); return; }
+  } else if (!stylePrompt) {
+    showErr('Please enter a style description.'); return;
+  }
+
+  S.gen = true;
+  document.getElementById('gbtn').disabled = true;
+  document.getElementById('gsp').style.display = 'block';
+  document.getElementById('glbl').textContent = S.mode === 'cover' ? 'Creating cover…' : 'Creating…';
+
+  const loadId = addLoading();
+  document.getElementById('emp').style.display = 'none';
+  document.getElementById('slist').style.display = 'flex';
+
+  try {
+    if (S.mode === 'cover') {
+      let publicUrl = coverUrl;
+
+      if (S.coverSrc === 'file') {
+        // ① Upload file to the hosted backend
+        setStatus('Uploading file…', true);
+        publicUrl = await uploadFileToServer(S.file);
+        // publicUrl is now e.g. https://your-app.onrender.com/uploads/1234abc.mp3
+      }
+
+      // ② Tell TTAPI to fetch the audio from that public URL
+      setStatus('Registering audio with TTAPI…', true);
+      const musicId = await registerWithTTAPI(publicUrl);
+
+      // ③ Generate the cover
+      setStatus('Generating cover with ' + S.modelName + '…', true);
+      await generateCover(musicId, coverStyle, coverLyrics, loadId);
+
+    } else {
+      const lyrics = S.mode === 'custom' ? document.getElementById('lyrics-input').value.trim() : '';
+      const title  = document.getElementById('title-input').value.trim();
+      const body   = {
+        mv:           S.model,
+        custom:       S.mode === 'custom',
+        instrumental: S.instrumental,
+        generateVideo: S.genVideo
+      };
+      if (S.mode === 'custom') {
+        if (lyrics) body.prompt = lyrics;
+        body.tags = stylePrompt;
+        if (title) body.title = title;
+      } else {
+        body.gpt_description_prompt = stylePrompt;
+      }
+      if (S.vocalGender) body.vocal_gender = S.vocalGender;
+
+      setStatus('Sending to Suno via TTAPI…', true);
+      const r = await fetch(`${TTAPI}/suno/v1/music`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'TT-API-KEY': S.apiKey },
+        body: JSON.stringify(body)
+      });
+      const d = await r.json();
+      if (d.status === 'SUCCESS' && d.data && d.data.jobId) {
+        setStatus('Composing… 30–90 s', true);
+        const musics = await pollFetch(
+          d.data.jobId,
+          x => x && x.data && x.data.musics && x.data.musics.length > 0 ? x.data.musics : null
+        );
+        removeLoading(loadId);
+        if (musics) musics.forEach(m => addCard(m, stylePrompt, 'orig'));
+        else showErr('Generation timed out. Try again.');
+      } else {
+        removeLoading(loadId);
+        showErr(d.message || 'Generation failed. Check your TTAPI key.');
+      }
+    }
+  } catch (e) {
+    removeLoading(loadId);
+    showErr('Error: ' + e.message);
+  } finally {
+    S.gen = false;
+    document.getElementById('gbtn').disabled = false;
+    document.getElementById('gsp').style.display = 'none';
+    document.getElementById('glbl').textContent = S.mode === 'cover' ? '✦ Create cover' : '✦ Create song';
+    setStatus('Ready', false);
+  }
+}
+
+// ────────────────────────────────────────────────────────────────
+// WAV download
+// ────────────────────────────────────────────────────────────────
+async function downloadWav(musicId, btnEl, title) {
+  if (!S.apiKey) { showErr('Enter your API key first.'); return; }
+  btnEl.disabled = true; btnEl.textContent = '⏳ WAV';
+  try {
+    const r = await fetch(`${TTAPI}/suno/v1/wav`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'TT-API-KEY': S.apiKey },
+      body: JSON.stringify({ music_id: musicId })
+    });
+    const d = await r.json();
+    if (d.status === 'SUCCESS' && d.data && d.data.wavUrl) {
+      const a = document.createElement('a');
+      a.href = d.data.wavUrl; a.download = (title || 'track') + '.wav';
+      a.target = '_blank'; a.click();
+      btnEl.textContent = '⬇ WAV';
+    } else {
+      showErr(d.message || 'WAV not available yet — try again in a moment.');
+      btnEl.textContent = '⬇ WAV';
+    }
+  } catch (e) { showErr('WAV error: ' + e.message); btnEl.textContent = '⬇ WAV'; }
+  finally { btnEl.disabled = false; }
+}
+
+// ────────────────────────────────────────────────────────────────
+// UI helpers
+// ────────────────────────────────────────────────────────────────
+function setS(t)  { document.getElementById('style-prompt').value = t; }
+function surprise() { setS(PROMPTS[Math.floor(Math.random() * PROMPTS.length)]); }
+function setStatus(msg, loading) {
+  document.getElementById('stxt').textContent = msg;
+  document.getElementById('sdot').className = 'sd' + (loading ? ' on' : '');
+}
+function showErr(msg) {
+  const e = document.getElementById('errmsg');
+  e.textContent = msg; e.style.display = 'block';
+  setTimeout(() => e.style.display = 'none', 8000);
+}
+
+// Loading skeleton cards
+let lci = 0;
+function addLoading() {
+  const id = 'lc_' + (lci++);
+  const d  = document.createElement('div'); d.id = id; d.className = 'ldc';
+  d.innerHTML = '<div class="ldcov"></div><div class="ldln">'
+    + '<div class="ldl" style="width:62%"></div>'
+    + '<div class="ldl" style="width:44%"></div>'
+    + '<div class="ldl" style="width:30%"></div></div>';
+  document.getElementById('slist').prepend(d);
+  return id;
+}
+function removeLoading(id) {
+  const e = document.getElementById(id); if (e) e.remove();
+  if (!document.querySelector('.sc') && !document.querySelector('.ldc')) {
+    document.getElementById('emp').style.display   = 'flex';
+    document.getElementById('slist').style.display = 'none';
+  }
+}
+
+function ft(s) {
+  return Math.floor(s / 60) + ':' + String(Math.floor(s % 60)).padStart(2, '0');
+}
+
+function addCard(m, tags, type) {
+  S.count++;
+  document.getElementById('song-count').textContent = S.count + ' track' + (S.count !== 1 ? 's' : '');
+  const d      = document.createElement('div'); d.className = 'sc'; d.id = 'sc_' + m.musicId;
+  const title  = m.title || 'Untitled';
+  const cov    = m.imageUrl || m.imageLargeUrl || '';
+  const audUrl = m.audioUrl || m.mp3Url || '';
+  const dur    = m.duration ? ft(m.duration) : '—';
+  const covH   = cov
+    ? `<img class="scov" src="${cov}" alt="${title}" onerror="this.style.display='none'">`
+    : '<div class="scov-ph">🎵</div>';
+  const typeTag = type === 'cover'
+    ? '<span class="stype cover">cover</span>'
+    : '<span class="stype orig">original</span>';
+  const sid  = m.musicId.replace(/'/g, "\\'");
+  const stit = title.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+  const tagStr = (m.tags || tags).substring(0, 55);
+
+  d.innerHTML = `
+    ${covH}
+    <div class="sinfo">
+      <div class="stit">${title}</div>
+      <div class="smeta">
+        ${typeTag}
+        <span class="smod">${S.modelName}</span>
+        <span class="stags">${tagStr}</span>
+      </div>
+    </div>
+    <div class="wv" id="wv_${m.musicId}">${wvBars()}</div>
+    <span class="sdur">${dur}</span>
+    <div class="sacts">
+      <button class="sa"
+        onclick="event.stopPropagation();window.open('${audUrl}','_blank')">↓ MP3</button>
+      <button class="sa wav" id="wav_${m.musicId}"
+        onclick="event.stopPropagation();downloadWav('${sid}',this,'${stit}')">⬇ WAV</button>
+      ${m.videoUrl
+        ? `<button class="sa" onclick="event.stopPropagation();window.open('${m.videoUrl}','_blank')">▶ MP4</button>`
+        : ''}
+    </div>
+    <button class="pb2"
+      onclick="event.stopPropagation();playSong('${sid}','${audUrl}','${cov}','${stit}','${tagStr.substring(0,40)}')">▶</button>
+  `;
+  document.getElementById('slist').prepend(d);
+}
+
+function wvBars() {
+  return [4,8,14,10,18,22,16,12,20,14,8,18,24,16,10,6,14,20,12,8]
+    .map(h => `<div class="wb" style="height:${h}px;"></div>`).join('');
+}
+
+// ────────────────────────────────────────────────────────────────
+// Audio player
+// ────────────────────────────────────────────────────────────────
+const audEl = document.getElementById('aud');
+let progInt = null;
+
+function playSong(id, url, cov, tit, tags) {
+  if (!url) { showErr('No audio URL for this track.'); return; }
+  document.querySelectorAll('.sc').forEach(c => c.classList.remove('playing'));
+  document.querySelectorAll('.wv').forEach(w => w.classList.remove('on'));
+  const card = document.getElementById('sc_' + id); if (card) card.classList.add('playing');
+  const wv   = document.getElementById('wv_' + id); if (wv) { wv.classList.add('on'); animWv(wv); }
+  audEl.src = url; audEl.volume = 0.8; audEl.play();
+  document.getElementById('player').style.display = 'flex';
+  const pc = document.getElementById('pcov'); pc.src = cov; pc.onerror = () => pc.style.display = 'none';
+  document.getElementById('ptit').textContent = tit;
+  document.getElementById('ptag').textContent = tags;
+  document.getElementById('pp').textContent   = '⏸';
+  if (progInt) clearInterval(progInt);
+  progInt = setInterval(updProg, 500);
+  audEl.onended = () => document.getElementById('pp').textContent = '▶';
+}
+function togPlay() {
+  if (audEl.paused) { audEl.play(); document.getElementById('pp').textContent = '⏸'; }
+  else              { audEl.pause(); document.getElementById('pp').textContent = '▶'; }
+}
+function updProg() {
+  if (!audEl.duration) return;
+  const p = (audEl.currentTime / audEl.duration) * 100;
+  document.getElementById('prf').style.width = Math.round(p) + '%';
+  document.getElementById('pcur').textContent = ft(audEl.currentTime);
+  document.getElementById('pdur').textContent = ft(audEl.duration);
+}
+function seek(e) {
+  const b = document.getElementById('prb');
+  const p = e.offsetX / b.offsetWidth;
+  if (audEl.duration) { audEl.currentTime = p * audEl.duration; updProg(); }
+}
+function setVol(v) { audEl.volume = +v; }
+function animWv(wv) {
+  wv.querySelectorAll('.wb').forEach((b, i) => {
+    const tick = () => {
+      if (!wv.classList.contains('on')) { b.style.height = '4px'; return; }
+      b.style.height = Math.round(4 + Math.random() * 22) + 'px';
+      setTimeout(tick, 150 + Math.random() * 200);
+    };
+    setTimeout(tick, i * 35);
+  });
+}
+</script>
+</body>
+</html>

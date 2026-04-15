@@ -1,0 +1,41 @@
+# ─────────────────────────────────────────────────────────────────
+# Cloudflare Tunnel config for Melodia
+# File: cloudflare/config.yml
+#
+# SETUP:
+#   1. Install cloudflared:
+#      macOS:   brew install cloudflared
+#      Linux:   See https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/
+#      Windows: Download the .exe from the same page
+#
+#   2. Log in to Cloudflare:
+#      cloudflared login
+#
+#   3. Create the tunnel (run once):
+#      cloudflared tunnel create melodia
+#      → This creates a credentials file and prints a Tunnel ID like:
+#        Created tunnel melodia with id abc123de-...
+#
+#   4. Replace TUNNEL_ID_HERE below with your actual tunnel ID.
+#
+#   5. Replace melodia.yourdomain.com with your actual subdomain.
+#      (Your domain must be on Cloudflare DNS)
+#
+#   6. Add DNS route (run once):
+#      cloudflared tunnel route dns melodia melodia.yourdomain.com
+#
+#   7. Set in .env:
+#      PUBLIC_URL=https://melodia.yourdomain.com
+#
+#   8. Start the tunnel:
+#      cloudflared tunnel --config cloudflare/config.yml run
+#      (keep this running alongside: node server.js)
+# ─────────────────────────────────────────────────────────────────
+
+tunnel: TUNNEL_ID_HERE
+credentials-file: ~/.cloudflared/TUNNEL_ID_HERE.json
+
+ingress:
+  - hostname: melodia.yourdomain.com
+    service: http://localhost:3000
+  - service: http_status:404
