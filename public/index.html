@@ -547,8 +547,15 @@ input[type=range]{width:100%;accent-color:var(--pu);cursor:pointer;}
 // ────────────────────────────────────────────────────────────────
 // Config
 // ────────────────────────────────────────────────────────────────
-const TTAPI = 'https://api.ttapi.io';
 const LOCAL = '/api'; // Backend routes on the same origin
+const TTAPI = `${LOCAL}/ttapi`;
+
+function ttapiHeaders() {
+  return {
+    'Content-Type': 'application/json',
+    'x-ttapi-key': S.apiKey
+  };
+}
 
 const PROMPTS = [
   'upbeat synthwave with pulsing arpeggios and nostalgic 80s vibes',
@@ -787,9 +794,9 @@ async function uploadFileToServer(file) {
 async function registerWithTTAPI(publicUrl) {
   // FIX (Issue 5): use is_async: true so large files don't time out the browser fetch.
   // TTAPI fetches the file in the background and we poll for the music_id.
-  const r = await fetch(`${TTAPI}/suno/v1/upload`, {
+  const r = await fetch(`${TTAPI}/upload`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'TT-API-KEY': S.apiKey },
+    headers: ttapiHeaders(),
     body: JSON.stringify({ audio_url: publicUrl, is_async: true })
   });
   const d = await r.json();
@@ -836,9 +843,9 @@ async function generateCover(musicId, styleDesc, lyricsOverride, loadId) {
   };
   if (S.vocalGender) body.vocal_gender = S.vocalGender;
 
-  const r = await fetch(`${TTAPI}/suno/v1/cover`, {
+  const r = await fetch(`${TTAPI}/cover`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'TT-API-KEY': S.apiKey },
+    headers: ttapiHeaders(),
     body: JSON.stringify(body)
   });
   const d = await r.json();
@@ -870,9 +877,9 @@ async function pollFetch(jobId, extract, maxTries = 60, interval = 4000) {
   for (let i = 0; i < maxTries; i++) {
     await new Promise(r => setTimeout(r, interval));
     try {
-      const r = await fetch(`${TTAPI}/suno/v1/fetch`, {
+      const r = await fetch(`${TTAPI}/fetch`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'TT-API-KEY': S.apiKey },
+        headers: ttapiHeaders(),
         body: JSON.stringify({ jobId })
       });
       const d = await r.json();
@@ -895,9 +902,9 @@ async function genLyrics() {
   btn.textContent = '⏳…'; btn.disabled = true;
   S.lyricGen = true; setStatus('Generating lyrics…', true);
   try {
-    const r = await fetch(`${TTAPI}/suno/v1/lyrics`, {
+    const r = await fetch(`${TTAPI}/lyrics`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'TT-API-KEY': S.apiKey },
+      headers: ttapiHeaders(),
       body: JSON.stringify({ prompt })
     });
     const d = await r.json();
@@ -981,9 +988,9 @@ async function generate() {
       if (S.vocalGender) body.vocal_gender = S.vocalGender;
 
       setStatus('Sending to Suno via TTAPI…', true);
-      const r = await fetch(`${TTAPI}/suno/v1/music`, {
+      const r = await fetch(`${TTAPI}/music`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'TT-API-KEY': S.apiKey },
+        headers: ttapiHeaders(),
         body: JSON.stringify(body)
       });
       const d = await r.json();
@@ -1020,9 +1027,9 @@ async function downloadWav(musicId, btnEl, title) {
   if (!S.apiKey) { showErr('Enter your API key first.'); return; }
   btnEl.disabled = true; btnEl.textContent = '⏳ WAV';
   try {
-    const r = await fetch(`${TTAPI}/suno/v1/wav`, {
+    const r = await fetch(`${TTAPI}/wav`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'TT-API-KEY': S.apiKey },
+      headers: ttapiHeaders(),
       body: JSON.stringify({ music_id: musicId })
     });
     const d = await r.json();

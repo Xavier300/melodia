@@ -10,10 +10,42 @@ const app  = express();
 const PORT = process.env.PORT || 3000;
 
 const PUBLIC_URL = (process.env.PUBLIC_URL || '').replace(/\/$/, '');
+const TTAPI_BASE = 'https://api.ttapi.io';
+const DEFAULT_TTAPI_KEY = process.env.TTAPI_KEY || '';
 
 // ── Middleware ────────────────────────────────────────────────
 app.use(cors());
 app.use(express.json());
+
+function getTtapiKey(req) {
+  return req.get('x-ttapi-key') || DEFAULT_TTAPI_KEY;
+}
+
+async function proxyTTAPI(req, res, endpoint) {
+  const apiKey = getTtapiKey(req);
+  if (!apiKey) {
+    return res.status(400).json({ error: 'Missing TTAPI key.' });
+  }
+
+  try {
+    const response = await fetch(`${TTAPI_BASE}${endpoint}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'TT-API-KEY': apiKey
+      },
+      body: JSON.stringify(req.body || {})
+    });
+
+    const text = await response.text();
+    res.status(response.status);
+    res.set('content-type', response.headers.get('content-type') || 'application/json; charset=utf-8');
+    res.send(text);
+  } catch (error) {
+    console.error('[ttapi proxy]', endpoint, error.message);
+    res.status(502).json({ error: 'Failed to reach TTAPI.', details: error.message });
+  }
+}
 
 // FIX: express.static('public') already serves public/uploads/ at /uploads/.
 // The previous second mount was redundant and could interfere with
@@ -123,6 +155,13 @@ app.get('/api/status', (req, res) => {
     tunnelConfigured: !!PUBLIC_URL
   });
 });
+
+app.post('/api/ttapi/music',  (req, res) => proxyTTAPI(req, res, '/suno/v1/music'));
+app.post('/api/ttapi/upload', (req, res) => proxyTTAPI(req, res, '/suno/v1/upload'));
+app.post('/api/ttapi/cover',  (req, res) => proxyTTAPI(req, res, '/suno/v1/cover'));
+app.post('/api/ttapi/fetch',  (req, res) => proxyTTAPI(req, res, '/suno/v1/fetch'));
+app.post('/api/ttapi/lyrics', (req, res) => proxyTTAPI(req, res, '/suno/v1/lyrics'));
+app.post('/api/ttapi/wav',    (req, res) => proxyTTAPI(req, res, '/suno/v1/wav'));
 
 // ── Error handler (MUST be before catch-all) ──────────────────
 // FIX: previously this was after app.get('*') making it unreachable.
