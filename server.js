@@ -155,3 +155,61 @@ app.post('/api/ttapi/wav',    (req, res) => proxyTTAPI(req, res, '/suno/v1/wav')
 
 // ────────────────────────────────────────────────────────────────
 // ✅ MP3 SAVE ENDPOINT (THE FIX)
+// Saves a remote MP3 locally, then returns a same-origin downloadable URL.
+// This helps when third-party audio links do not force browser downloads.
+// ────────────────────────────────────────────────────────────────
+app.post('/api/save-mp3', async (req, res) => {
+  try {
+    const { url, filename } = req.body || {};
+
+    if (!url) {
+      return res.status(400).json({ error: 'Missing MP3 URL.' });
+    }
+
+    const resp = await fetch(url);
+    if (!resp.ok) {
+      return res.status(400).json({ error: `Could not fetch MP3 (${resp.status}).` });
+    }
+
+    const dir = path.join(__dirname, 'public', 'downloads');
+    fs.mkdirSync(dir, { recursive: true });
+
+    const safeName = path.basename(filename || `track-${Date.now()}.mp3`)
+      .replace(/[^a-zA-Z0-9._-]/g, '_');
+    const finalName = safeName.toLowerCase().endsWith('.mp3') ? safeName : `${safeName}.mp3`;
+    const filePath = path.join(dir, finalName);
+
+    const buffer = Buffer.from(await resp.arrayBuffer());
+    fs.writeFileSync(filePath, buffer);
+
+    const base = PUBLIC_URL || `${req.protocol}://${req.get('host')}`;
+    return res.json({
+      ok: true,
+      filename: finalName,
+      url: `${base}/downloads/${finalName}`
+    });
+  } catch (err) {
+    console.error('[save-mp3]', err.message);
+    return res.status(500).json({ error: 'Failed to save MP3.', details: err.message });
+  }
+});
+
+// ────────────────────────────────────────────────────────────────
+// Error handler
+// ────────────────────────────────────────────────────────────────
+app.use((err, req, res, next) => {
+  console.error('[error]', err.message);
+  res.status(err.status || 500).json({ error: err.message || 'Internal server error.' });
+});
+
+// Serve SPA for non-API routes
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// Start server
+app.listen(PORT, () => {
+  console.log('\nMelodia is running');
+  console.log(`Local:      http://localhost:${PORT}`);
+  console.log(`Public URL: ${PUBLIC_URL || '(not set -- add PUBLIC_URL to env)'}`);
+});
