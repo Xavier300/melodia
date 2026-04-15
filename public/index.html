@@ -1085,7 +1085,29 @@ function ft(s) {
   return Math.floor(s / 60) + ':' + String(Math.floor(s % 60)).padStart(2, '0');
 }
 
+function normalizeMusic(raw) {
+  if (!raw) return null;
+  return {
+    ...raw,
+    musicId: raw.musicId || raw.music_id || raw.id || '',
+    title: raw.title || raw.name || 'Untitled',
+    imageUrl: raw.imageUrl || raw.image_url || raw.imageLargeUrl || raw.image_large_url || '',
+    imageLargeUrl: raw.imageLargeUrl || raw.image_large_url || raw.imageUrl || raw.image_url || '',
+    audioUrl: raw.audioUrl || raw.audio_url || raw.mp3Url || raw.mp3_url || '',
+    mp3Url: raw.mp3Url || raw.mp3_url || raw.audioUrl || raw.audio_url || '',
+    videoUrl: raw.videoUrl || raw.video_url || '',
+    duration: raw.duration || raw.audioDuration || raw.audio_duration || 0,
+    tags: raw.tags || raw.tag || ''
+  };
+}
+
 function addCard(m, tags, type) {
+  m = normalizeMusic(m);
+  if (!m || !m.musicId) {
+    console.warn('Unable to render music card from payload:', m);
+    showErr('Song generated, but the app could not parse the track payload.');
+    return;
+  }
   S.count++;
   document.getElementById('song-count').textContent = S.count + ' track' + (S.count !== 1 ? 's' : '');
   const d      = document.createElement('div'); d.className = 'sc'; d.id = 'sc_' + m.musicId;
